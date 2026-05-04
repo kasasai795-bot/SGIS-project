@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGIS - Admin Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-logo"><h1>SGIS</h1><p>Smart Governance<br>Intelligence System</p></div>
+    <div class="sidebar-user" id="sidebarUser"></div>
+    <nav class="sidebar-nav">
+      <a href="dashboard.html" class="active">📊 Dashboard</a>
+      <a href="admin-complaints.html">📋 All Complaints</a>
+      <a href="assign-officer.html">➕ Assign Officer</a>
+      <a href="manage-users.html">👥 Manage Users</a>
+      <a href="reports.html">📄 View Reports</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a href="#" onclick="logout()">🚪 Logout</a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="main-header">
+      <div class="welcome-section">
+        <h2>Welcome back, Admin!</h2>
+        <p>Here's a quick overview of the complaints system.</p>
+      </div>
+    </header>
+
+    <div class="page-content">
+      <div class="stats-container">
+        <h3>Total Complaints</h3>
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value total" id="statTotal">0</div></div>
+          <div class="stat-card"><div class="stat-label">Open</div><div class="stat-value open" id="statSubmitted">0</div></div>
+          <div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value in-progress" id="statProgress">0</div></div>
+          <div class="stat-card"><div class="stat-label">Resolved</div><div class="stat-value resolved" id="statResolved">0</div></div>
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <a href="assign-officer.html"><button class="btn btn-dark">+ Assign Officer</button></a>
+        <a href="manage-users.html"><button class="btn btn-orange">+ Manage Users</button></a>
+      </div>
+
+      <div class="complaints-section">
+        <div class="section-header">
+          <h3>Recent Complaints</h3>
+          <a href="admin-complaints.html">View All</a>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr><th>ID</th><th>Title</th><th>Category</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody id="recentComplaints">
+              <tr><td colspan="5" style="text-align:center;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card" style="flex:1.4;">
+          <div class="chart-header"><h3>Complaints Overview</h3></div>
+          <div class="chart-wrapper"><canvas id="lineChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-header"><h3>Complaints Summary</h3></div>
+          <div class="chart-wrapper"><canvas id="donutChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="api.js"></script>
+  <script>
+    requireAdmin();
+    document.getElementById("sidebarUser").textContent = "logged in as: " + getUser().email;
+
+    let lineChart, donutChart;
+
+    async function loadDashboard() {
+      const result = await apiCall("/admin/stats");
+      if (!result || !result.ok) return;
+      const d = result.data;
+
+      document.getElementById("statTotal").textContent = d.total;
+      document.getElementById("statSubmitted").textContent = d.submitted;
+      document.getElementById("statProgress").textContent = d.inProgress;
+      document.getElementById("statResolved").textContent = d.resolved;
+
+      if (lineChart) lineChart.destroy();
+      lineChart = new Chart(document.getElementById("lineChart"), {
+        type: "line",
+        data: {
+          labels: d.monthly.map(m => m.month),
+          datasets: [{ label: "Complaints", data: d.monthly.map(m => m.count), borderColor: "#4e6b5e", fill: true, tension: 0.4 }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+
+      if (donutChart) donutChart.destroy();
+      donutChart = new Chart(document.getElementById("donutChart"), {
+        type: "doughnut",
+        data: {
+          labels: ["Submitted", "Assigned", "In Progress", "Resolved"],
+          datasets: [{ data: [d.submitted, d.assigned, d.inProgress, d.resolved], backgroundColor: ["#f4a261", "#457b9d", "#e9c46a", "#2a9d8f"] }]
+        }
+      });
+    }
+
+    async function loadRecent() {
+      const result = await apiCall("/admin/complaints");
+      if (!result || !result.ok) return;
+      const tbody = document.getElementById("recentComplaints");
+      const list = (result.data || []).slice(0, 5);
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No complaints yet</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(c => `
+        <tr>
+          <td>${c._id.slice(-6).toUpperCase()}</td>
+          <td>${c.title}</td>
+          <td>${c.category}</td>
+          <td>${statusBadge(c.status)}</td>
+          <td><a href="assign-officer.html?id=${c._id}"><button class="btn-view">Manage</button></a></td>
+        </tr>
+      `).join("");
+    }
+
+    loadDashboard();
+    loadRecent();
+  </script>
+</body>
+</html>

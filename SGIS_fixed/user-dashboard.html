@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGIS - My Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-logo"><h1>SGIS</h1><p>Smart Governance<br>Intelligence System</p></div>
+    <div class="sidebar-user" id="sidebarUser"></div>
+    <nav class="sidebar-nav">
+      <a href="user-dashboard.html" class="active"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="my-complaints.html"><span class="nav-icon">📋</span> My Complaints</a>
+      <a href="submit-complaint.html"><span class="nav-icon">+</span> Submit Complaint</a>
+      <a href="profile.html"><span class="nav-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a href="#" onclick="logout()"><span class="nav-icon">🚪</span> Logout</a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="top-bar">
+      <button class="top-bar-icon">🔍</button>
+      <button class="top-bar-icon">🔔</button>
+    </div>
+    <div class="page-content">
+      <div class="welcome-section">
+        <h2 id="welcomeMsg">Welcome back!</h2>
+        <p>Here's a quick overview of your complaints.</p>
+      </div>
+
+      <div class="stats-container">
+        <h3>Total Complaints</h3>
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value total" id="statTotal">0</div></div>
+          <div class="stat-card"><div class="stat-label">Open</div><div class="stat-value open" id="statOpen">0</div></div>
+          <div class="stat-card"><div class="stat-label">In Progress</div><div class="stat-value in-progress" id="statProgress">0</div></div>
+          <div class="stat-card"><div class="stat-label">Resolved</div><div class="stat-value resolved" id="statResolved">0</div></div>
+        </div>
+      </div>
+
+      <div class="submit-action">
+        <a href="submit-complaint.html">
+          <button class="btn-submit-new"><span class="btn-plus">+</span> Submit New Complaint</button>
+        </a>
+      </div>
+
+      <div class="complaints-section">
+        <div class="section-header"><h3>Your Recent Complaints</h3></div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr><th>ID</th><th>Title</th><th>Category</th><th>Status</th><th>Date</th></tr>
+            </thead>
+            <tbody id="complaintsBody">
+              <tr><td colspan="5" style="text-align:center;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer"><a href="my-complaints.html">View All →</a></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="api.js"></script>
+  <script>
+    requireLogin();
+    const user = getUser();
+    document.getElementById("sidebarUser").textContent = "logged in as: " + user.email;
+    document.getElementById("welcomeMsg").textContent = "Welcome back, " + (user.name || user.email) + "!";
+
+    async function loadAll() {
+      const result = await apiCall("/my-complaints");
+      if (!result || !result.ok) return;
+      const complaints = result.data || [];
+
+      document.getElementById("statTotal").textContent    = complaints.length;
+      document.getElementById("statOpen").textContent     = complaints.filter(c => c.status === "Submitted").length;
+      document.getElementById("statProgress").textContent = complaints.filter(c => c.status === "Assigned" || c.status === "In Progress").length;
+      document.getElementById("statResolved").textContent = complaints.filter(c => c.status === "Resolved").length;
+
+      const tbody = document.getElementById("complaintsBody");
+      const list = complaints.slice(0, 5);
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No complaints yet. <a href="submit-complaint.html">Submit one!</a></td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(c => `
+        <tr>
+          <td>${c._id.slice(-6).toUpperCase()}</td>
+          <td>${c.title}</td>
+          <td>${c.category}</td>
+          <td>${statusBadge(c.status)}</td>
+          <td>${formatDate(c.createdAt)}</td>
+        </tr>
+      `).join("");
+    }
+
+    loadAll();
+  </script>
+</body>
+</html>

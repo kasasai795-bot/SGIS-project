@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGIS - Submit Complaint</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-logo"><h1>SGIS</h1><p>Smart Governance<br>Intelligence System</p></div>
+    <div class="sidebar-user" id="sidebarUser"></div>
+    <nav class="sidebar-nav">
+      <a href="user-dashboard.html"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="my-complaints.html"><span class="nav-icon">📋</span> My Complaints</a>
+      <a href="submit-complaint.html" class="active"><span class="nav-icon">+</span> Submit Complaint</a>
+      <a href="profile.html"><span class="nav-icon">👤</span> Profile</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a href="#" onclick="logout()"><span class="nav-icon">🚪</span> Logout</a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-content">
+      <div class="form-container">
+        <h2>Submit Complaint</h2>
+
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="complaintTitle" class="form-input" placeholder="Brief title of your complaint" required />
+        </div>
+
+        <div class="form-group">
+          <label>Category</label>
+          <select id="complaintCategory" class="form-input">
+            <option value="">Select category</option>
+            <option>Water Supply</option>
+            <option>Infrastructure</option>
+            <option>Sanitation</option>
+            <option>Electricity</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="complaintPriority" class="form-input">
+            <option value="Low">Low</option>
+            <option value="Medium" selected>Medium</option>
+            <option value="High">High</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="complaintDescription" class="form-input" rows="5" placeholder="Describe your complaint in detail..."></textarea>
+        </div>
+
+        <div class="ai-suggestion">
+          💡 Suggested Category: <strong id="suggestedCategory">—</strong>
+        </div>
+
+        <button class="login-btn" onclick="submitComplaint()" style="margin-top:16px;">Submit Complaint</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="api.js"></script>
+  <script>
+    requireLogin();
+    document.getElementById("sidebarUser").textContent = "logged in as: " + getUser().email;
+
+    // Category suggestion logic
+    const titleInput = document.getElementById("complaintTitle");
+    const descInput = document.getElementById("complaintDescription");
+
+    function detectCategory(text) {
+      text = text.toLowerCase();
+      if (text.includes("water") || text.includes("pipe") || text.includes("leak")) return "Water Supply";
+      if (text.includes("electric") || text.includes("power") || text.includes("light")) return "Electricity";
+      if (text.includes("garbage") || text.includes("dirty") || text.includes("waste")) return "Sanitation";
+      if (text.includes("road") || text.includes("pothole") || text.includes("bridge")) return "Infrastructure";
+      return "Other";
+    }
+
+    function updateSuggestion() {
+      const text = titleInput.value + " " + descInput.value;
+      document.getElementById("suggestedCategory").textContent = detectCategory(text);
+    }
+
+    titleInput.addEventListener("input", updateSuggestion);
+    descInput.addEventListener("input", updateSuggestion);
+
+    async function submitComplaint() {
+      const title = document.getElementById("complaintTitle").value.trim();
+      const category = document.getElementById("complaintCategory").value;
+      const priority = document.getElementById("complaintPriority").value;
+      const description = document.getElementById("complaintDescription").value.trim();
+
+      if (!title || !category || !description) {
+        showAlert("Please fill in all fields", true);
+        return;
+      }
+
+      const result = await apiCall("/complaints", "POST", { title, category, description, priority });
+      if (result && result.ok) {
+        showAlert("✅ Complaint submitted!");
+        setTimeout(() => window.location.href = "my-complaints.html", 1500);
+      } else {
+        showAlert(result?.data?.message || "Error submitting complaint", true);
+      }
+    }
+  </script>
+</body>
+</html>
