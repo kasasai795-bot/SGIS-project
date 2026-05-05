@@ -31,7 +31,7 @@ This project is a Smart Grievance System that allows users to submit complaints 
    node server.js
 
 5. Open frontend:
-   Open HTML files in browser
+   Open HTML files in browser http://localhost:8080/login.html 
 
 ## Deployment
 
